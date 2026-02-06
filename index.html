@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <title>Generator raport tură</title>
+  <style>
+    :root {
+      --bg: #020617;
+      --bg-card: #0b1220;
+      --text: #e5e7eb;
+      --muted: #9ca3af;
+      --border: #1f2937;
+      --accent: #2563eb;
+      --accent-soft: #1d4ed8;
+    }
+
+    body.light {
+      --bg: #f9fafb;
+      --bg-card: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --accent: #2563eb;
+      --accent-soft: #1d4ed8;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px;
+      font-family: Arial, sans-serif;
+      background: radial-gradient(circle at top, #0f172a, #020617);
+      color: var(--text);
+      display: flex;
+      justify-content: center;
+    }
+
+    .container {
+      width: 100%;
+      max-width: 900px;
+      background: var(--bg-card);
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      padding: 20px 24px;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.5);
+      box-sizing: border-box;
+    }
+
+    header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      font-size: 20px;
+      margin: 0;
+    }
+
+    .subtitle {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 16px;
+    }
+
+    .theme-toggle {
+      font-size: 12px;
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      color: var(--muted);
+      cursor: pointer;
+    }
+
+    .theme-toggle:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .info-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .info-item {
+      flex: 1;
+      min-width: 160px;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+    }
+
+    .info-label {
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .info-value {
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    textarea {
+      width: 100%;
+      height: 380px;
+      padding: 10px;
+      margin-top: 4px;
+      border-radius: 10px;
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      font-family: Consolas, "Courier New", monospace;
+      font-size: 14px;
+      resize: vertical;
+      box-sizing: border-box;
+      white-space: pre;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+      align-items: center;
+    }
+
+    button.primary {
+      padding: 8px 18px;
+      border-radius: 999px;
+      border: none;
+      cursor: pointer;
+      font-weight: 600;
+      background: var(--accent);
+      color: white;
+      font-size: 14px;
+    }
+
+    button.primary:hover {
+      background: var(--accent-soft);
+    }
+
+    button.ghost {
+      padding: 8px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--border);
+      background: transparent;
+      cursor: pointer;
+      font-size: 13px;
+      color: var(--muted);
+    }
+
+    button.ghost:hover {
+      border-color: var(--accent);
+      color: var(--text);
+    }
+
+    .status {
+      font-size: 13px;
+      color: #6ee7b7;
+      min-height: 18px;
+    }
+
+    @media (max-width: 600px) {
+      .container {
+        padding: 16px;
+      }
+      textarea {
+        height: 320px;
+      }
+      header {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div>
+        <h1>Generator raport tură</h1>
+        <div class="subtitle">
+          Data și tura se setează automat. Copiază textul și dă paste în fișierul tău de raport.
+        </div>
+      </div>
+      <button class="theme-toggle" id="themeToggle">🌙 Dark / Light</button>
+    </header>
+
+    <div class="info-row">
+      <div class="info-item">
+        <span class="info-label">Data detectată</span>
+        <span class="info-value" id="infoDate">--.--.----</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Interval tură</span>
+        <span class="info-value" id="infoShift">--:-- – --:--</span>
+      </div>
+      <div class="info-item">
+        <span class="info-label">Ora sistemului</span>
+        <span class="info-value" id="infoTime">--:--</span>
+      </div>
+    </div>
+
+    <textarea id="reportText"></textarea>
+
+    <div class="buttons">
+      <button class="primary" id="copyBtn">COPY</button>
+      <button class="ghost" id="regenBtn">Regenerează după ora curentă</button>
+      <button class="ghost" id="downloadBtn">Descarcă .txt</button>
+      <span class="status" id="statusMsg"></span>
+    </div>
+  </div>
+
+  <script>
+    function pad2(num) {
+      return num.toString().padStart(2, "0");
+    }
+
+    function getNow() {
+      return new Date();
+    }
+
+    function getCurrentDateString(now) {
+      const day = pad2(now.getDate());
+      const month = pad2(now.getMonth() + 1);
+      const year = now.getFullYear();
+      return `${day}.${month}.${year}`;
+    }
+
+    function getTuraInterval(now) {
+      const hour = now.getHours();
+
+      if (hour >= 7 && hour < 15) {
+        return "07:00 – 15:00";
+      } else if (hour >= 15 && hour < 23) {
+        return "15:00 – 23:00";
+      } else {
+        return "23:00 – 07:00";
+      }
+    }
+
+    function getTimeString(now) {
+      return `${pad2(now.getHours())}:${pad2(now.getMinutes())}`;
+    }
+
+    function generateText(dateStr, intervalStr) {
+      return `Model 1: AmberJade
+
+-
+-
+-
+----------------
+Model 2: AmberJadex
+
+-
+-
+-
+----------------
+Model 3: Amber Vip
+
+-
+-
+-
+----------------
+Model 4: HannahRay
+
+-
+-
+-
+----------------
+Model 5: IvyLovell
+
+-
+-
+-
+---------------- 
+Model 6: IvyLovellVipp
+
+-
+-
+-
+---------------- 
+Tura: ${dateStr} – ${intervalStr}
+Total net: $
+Custom / VC: da / nu
+Fani prioritari: nume fan + cont model`;
+    }
+
+    function updateAll(autoFillText = true) {
+      const now = getNow();
+      const dateStr = getCurrentDateString(now);
+      const intervalStr = getTuraInterval(now);
+      const timeStr = getTimeString(now);
+
+      document.getElementById("infoDate").textContent = dateStr;
+      document.getElementById("infoShift").textContent = intervalStr;
+      document.getElementById("infoTime").textContent = timeStr;
+
+      if (autoFillText) {
+        const textarea = document.getElementById("reportText");
+        textarea.value = generateText(dateStr, intervalStr);
+      }
+    }
+
+    function copyToClipboard() {
+      const textarea = document.getElementById("reportText");
+      const statusMsg = document.getElementById("statusMsg");
+      const textToCopy = textarea.value;
+
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(textToCopy)
+          .then(() => {
+            statusMsg.textContent = "Text copiat în clipboard ✅";
+            setTimeout(() => statusMsg.textContent = "", 2500);
+          })
+          .catch(() => {
+            textarea.select();
+            document.execCommand("copy");
+            statusMsg.textContent = "Text copiat (fallback) ✅";
+            setTimeout(() => statusMsg.textContent = "", 2500);
+          });
+      } else {
+        textarea.select();
+        document.execCommand("copy");
+        statusMsg.textContent = "Text copiat ✅";
+        setTimeout(() => statusMsg.textContent = "", 2500);
+      }
+    }
+
+    function downloadTxt() {
+      const textarea = document.getElementById("reportText");
+      const statusMsg = document.getElementById("statusMsg");
+      const content = textarea.value;
+      const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+
+      const now = getNow();
+      const day = pad2(now.getDate());
+      const month = pad2(now.getMonth() + 1);
+      const year = now.getFullYear();
+      const fileName = `raport_${year}-${month}-${day}.txt`;
+
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+
+      statusMsg.textContent = `Fișier descărcat: ${fileName} 📁`;
+      setTimeout(() => statusMsg.textContent = "", 3000);
+    }
+
+    function toggleTheme() {
+      const body = document.body;
+      const isLight = body.classList.toggle("light");
+      localStorage.setItem("raport_theme", isLight ? "light" : "dark");
+    }
+
+    function loadTheme() {
+      const saved = localStorage.getItem("raport_theme");
+      if (saved === "light") {
+        document.body.classList.add("light");
+      }
+    }
+
+    document.addEventListener("DOMContentLoaded", function () {
+      loadTheme();
+      updateAll(true);
+
+      document.getElementById("copyBtn").addEventListener("click", copyToClipboard);
+      document.getElementById("regenBtn").addEventListener("click", function () {
+        updateAll(true);
+        const statusMsg = document.getElementById("statusMsg");
+        statusMsg.textContent = "Text regenerat după ora curentă 🔁";
+        setTimeout(() => statusMsg.textContent = "", 2500);
+      });
+      document.getElementById("downloadBtn").addEventListener("click", downloadTxt);
+      document.getElementById("themeToggle").addEventListener("click", toggleTheme);
+    });
+  </script>
+</body>
+</html>
